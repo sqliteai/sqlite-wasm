@@ -1,3 +1,6 @@
 [submodule "modules/sqlite"]
 	path = modules/sqlite
 	url = https://github.com/sqlite/sqlite.git
+[submodule "modules/emsdk"]
+	path = modules/emsdk
+	url = https://github.com/emscripten-core/emsdk.git
