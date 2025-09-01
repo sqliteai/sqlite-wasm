@@ -7,3 +7,6 @@
 [submodule "modules/sqlite-wasm"]
 	path = modules/sqlite-wasm
 	url = https://github.com/sqlite/sqlite-wasm.git
+[submodule "modules/sqlite-sync"]
+	path = modules/sqlite-sync
+	url = https://github.com/sqliteai/sqlite-sync.git
