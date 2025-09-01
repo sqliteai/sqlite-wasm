@@ -10,3 +10,6 @@
 [submodule "modules/sqlite-sync"]
 	path = modules/sqlite-sync
 	url = https://github.com/sqliteai/sqlite-sync.git
+[submodule "modules/sqlite-vector"]
+	path = modules/sqlite-vector
+	url = https://github.com/sqliteai/sqlite-vector.git
