@@ -1,12 +1,14 @@
-njobs() {
+setup() {
     local CPUS=1
     if [[ "$OS" == "Windows_NT" ]]; then
         CPUS=$(powershell -Command "[Environment]::ProcessorCount")
     else
         if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" == "darwin" ]]; then
             CPUS=$(sysctl -n hw.ncpu)
+            brew install wabt
         else
             CPUS=$(nproc)
+            sudo apt install wabt
         fi
     fi
     echo "$CPUS"
@@ -26,5 +28,5 @@ do
     grep -F "$line" "$makefile" >/dev/null 2>&1 || echo "$line" >> "$makefile"
 done
 
-(cd modules/sqlite/ext/wasm && make -j$(njobs) dist sqlite3_wasm_extra_init.c=../../../../wasm.c)
+(cd modules/sqlite/ext/wasm && make -j$(setup) dist sqlite3_wasm_extra_init.c=../../../../wasm.c)
 #mv modules/sqlite/ext/wasm/sqlite-wasm-*.zip $(TARGET)
