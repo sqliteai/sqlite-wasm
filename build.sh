@@ -19,7 +19,7 @@ git clean -fdX
 (cd modules/sqlite && git reset --hard HEAD && git clean -fd)
 ./modules/emsdk/emsdk install latest
 ./modules/emsdk/emsdk activate latest
-cd modules/emsdk && source ./emsdk_env.sh && cd ../sqlite && ./configure --enable-all && cd ../..
+cd modules/emsdk && . ./emsdk_env.sh && cd ../sqlite && ./configure --enable-all && cd ../..
 
 makefile='modules/sqlite/ext/wasm/GNUmakefile'
 for line in \
