@@ -2,3 +2,4 @@ node_modules/
 sqlite-wasm/*
 !sqlite-wasm/package.json
 !sqlite-wasm/README.md
+!sqlite-wasm/test
