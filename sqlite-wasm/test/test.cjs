@@ -18,7 +18,7 @@ const packageJson = require('../package.json');
 
         const version = await page.evaluate(() => document.body.innerText);
 
-        if (version != packageJson.version) throw Error('Error: version mismatch');
+        if (version != packageJson.version) throw Error(`Error: version mismatch. Expected ${packageJson.version} but got ${version}`);
         console.log(`✅ ${browser.name()} sqlite-wasm test passed`);
         
         await window.close();
