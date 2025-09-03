@@ -46,4 +46,3 @@ PKG=sqlite-wasm/package.json
 TMP=sqlite-wasm/package.tmp.json
 
 jq --arg version "$(cat modules/sqlite/VERSION)-sync.$(cd modules/sqlite-sync && make version)-vector.$(cd modules/sqlite-vector && make version)" '.version = $version' "$PKG" > "$TMP" && mv "$TMP" "$PKG"
-(cd sqlite-wasm && npm i && npm run fix && npm run publint && npm run check-types)

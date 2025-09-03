@@ -1,0 +1,27 @@
+name: build, test and release sqlite-wasm
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  btr:
+    runs-on: ubuntu-22.04
+    name: build, test and release sqlite-wasm
+
+    steps:
+
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: setup playwright for tests
+        run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
+
+      - name: build, test and release sqlite-wasm
+        run: cd sqlite-wasm && npm i && npm run deploy
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
