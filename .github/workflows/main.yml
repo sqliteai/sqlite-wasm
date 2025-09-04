@@ -23,6 +23,9 @@ jobs:
       - name: setup playwright for tests
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
+      - name: install wabt
+        run: sudo apt install wabt
+
       - name: build, test and release sqlite-wasm
         run: cd sqlite-wasm && npm i && npm run deploy
         env:
