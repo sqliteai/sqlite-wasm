@@ -8,7 +8,7 @@ setup() {
             brew install wabt
         else
             CPUS=$(nproc)
-            sudo apt install wabt
+            sudo apt-get update && sudo apt-get -y install wabt
         fi
     fi
     echo "$CPUS"
