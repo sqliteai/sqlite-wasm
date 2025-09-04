@@ -1,17 +1,15 @@
-setup() {
-    CPUS=1
-    if [ "$OS" = "Windows_NT" ]; then
-        CPUS=$(powershell -Command "[Environment]::ProcessorCount")
+CPUS=1
+if [ "$OS" = "Windows_NT" ]; then
+    CPUS=$(powershell -Command "[Environment]::ProcessorCount")
+else
+    if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "darwin" ]; then
+        CPUS=$(sysctl -n hw.ncpu)
+        brew install wabt
     else
-        if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "darwin" ]; then
-            CPUS=$(sysctl -n hw.ncpu)
-            brew install wabt >/dev/null 2>&1
-        else
-            CPUS=$(nproc)
-        fi
+        CPUS=$(nproc)
+        sudo apt update && sudo apt install wabt
     fi
-    echo "$CPUS"
-}
+fi
 
 git clean -fdX
 
@@ -29,7 +27,7 @@ do
     grep -F "$line" "$makefile" >/dev/null 2>&1 || echo "$line" >> "$makefile"
 done
 
-(cd modules/sqlite/ext/wasm && make -j$(setup) dist sqlite3_wasm_extra_init.c=../../../../wasm.c)
+(cd modules/sqlite/ext/wasm && make -j$CPUS dist sqlite3_wasm_extra_init.c=../../../../wasm.c)
 unzip modules/sqlite/ext/wasm/sqlite-wasm-*.zip -d tmp
 mkdir -p sqlite-wasm/sqlite-wasm/jswasm
 mv tmp/sqlite-wasm-*/jswasm sqlite-wasm/sqlite-wasm/.
