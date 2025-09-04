@@ -1,9 +1,9 @@
 setup() {
-    local CPUS=1
-    if [[ "$OS" == "Windows_NT" ]]; then
+    CPUS=1
+    if [ "$OS" = "Windows_NT" ]; then
         CPUS=$(powershell -Command "[Environment]::ProcessorCount")
     else
-        if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" == "darwin" ]]; then
+        if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "darwin" ]; then
             CPUS=$(sysctl -n hw.ncpu)
             brew install wabt
         else
