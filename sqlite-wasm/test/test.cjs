@@ -11,7 +11,7 @@ const packageJson = require('../package.json');
         const context = await window.newContext();
         const page = await context.newPage();
 
-        await page.goto('http://127.0.0.1:8081/test/demo.html');
+        await page.goto('http://127.0.0.1:8080/test/demo.html');
 
         //sleep 5s
         await new Promise(r => setTimeout(r, 5000));
