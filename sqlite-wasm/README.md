@@ -2,16 +2,23 @@
 
 SQLite WASM conveniently wrapped as an ES Module. It includes the [sqlite-sync](https://github.com/sqliteai/sqlite-sync) and [sqlite-vector](https://github.com/sqliteai/sqlite-vector) extensions that are automatically loaded at runtime. TypeScript types are from the [official sqlite-wasm repository](https://github.com/sqlite/sqlite-wasm).
 
+## Features
+
+- 🚀 SQLite WASM wrapped as an ES Module
+- 🔄 Includes sqlite-sync and sqlite-vector extensions
+- 📝 Full TypeScript support
+- 💾 OPFS (Origin Private File System) support for persistent storage
+- ⚡ Worker thread support for better performance
+
 ## Installation
 
 ```bash
 npm install @sqliteai/sqlite-wasm
 ```
 
-## Vite Usage Example
+## Vite Configuration
 
-If you are using [vite](https://vitejs.dev/), you need to add the following
-config option in `vite.config.js`:
+If you are using [Vite](https://vitejs.dev/), you need to add the following configuration options to your `vite.config.js`:
 
 ```js
 import { defineConfig } from 'vite';
@@ -29,20 +36,19 @@ export default defineConfig({
 });
 ```
 
-Check out the [sport-tracker-app example](https://github.com/sqliteai/sqlite-sync/tree/main/examples/sport-tracker-app) that shows this in action while using SQLite WASM in a worker thread.
+💡 **Example**: Check out the [sport-tracker-app example](https://github.com/sqliteai/sqlite-sync/tree/main/examples/sport-tracker-app) to see SQLite WASM in action with a worker thread implementation.
 
 ## Usage
 
-There are three ways to use SQLite Wasm:
+There are three ways to use SQLite WASM:
 
-- [in the main thread with a wrapped worker](#in-a-wrapped-worker-with-opfs-if-available)
-- [in a worker](#in-a-worker-with-opfs-if-available)
-- [in the main thread](#in-the-main-thread-without-opfs) (⚠️ sqlite-sync does not work in the main thread)
+1. **[Wrapped Worker](#wrapped-worker-with-opfs-support)** - Uses a wrapped worker (recommended)
+2. **[Direct Worker](#direct-worker-with-opfs-support)** - Uses a direct worker implementation  
+3. **[Main Thread](#main-thread-without-opfs)** - Runs in the main thread ⚠️ *sqlite-sync does not work in the main thread*
 
-Only the worker versions allow you to use the origin private file system (OPFS)
-storage back-end.
+> 💡 **Note**: Only the worker versions support the Origin Private File System (OPFS) storage backend for persistent data storage.
 
-### In a wrapped worker (with OPFS if available):
+### Wrapped Worker (with OPFS Support)
 
 > [!Warning]
 >
@@ -93,10 +99,9 @@ const initializeSQLite = async () => {
 initializeSQLite();
 ```
 
-The `promiser` object above implements the
-[Worker1 API](https://sqlite.org/wasm/doc/trunk/api-worker1.md#worker1-methods).
+> 📚 **API Reference**: The `promiser` object implements the [Worker1 API](https://sqlite.org/wasm/doc/trunk/api-worker1.md#worker1-methods).
 
-### In a worker (with OPFS if available):
+### Direct Worker (with OPFS Support)
 
 > [!Warning]
 >
@@ -106,13 +111,13 @@ The `promiser` object above implements the
 >
 > `Cross-Origin-Embedder-Policy: require-corp`
 
+**Main thread (`main.js`):**
 ```js
-// In `main.js`.
 const worker = new Worker('worker.js', { type: 'module' });
 ```
 
+**Worker thread (`worker.js`):**
 ```js
-// In `worker.js`.
 import sqlite3InitModule from '@sqliteai/sqlite-wasm';
 
 const log = console.log;
@@ -146,10 +151,9 @@ const initializeSQLite = async () => {
 initializeSQLite();
 ```
 
-The `db` object above implements the
-[Object Oriented API #1](https://sqlite.org/wasm/doc/trunk/api-oo1.md).
+> 📚 **API Reference**: The `db` object implements the [Object Oriented API #1](https://sqlite.org/wasm/doc/trunk/api-oo1.md).
 
-### In the main thread (without OPFS):
+### Main Thread (without OPFS)
 
 ```js
 import sqlite3InitModule from '@sqliteai/sqlite-wasm';
@@ -180,15 +184,19 @@ const initializeSQLite = async () => {
 initializeSQLite();
 ```
 
-The `db` object above implements the
-[Object Oriented API #1](https://sqlite.org/wasm/doc/trunk/api-oo1.md).
+> 📚 **API Reference**: The `db` object implements the [Object Oriented API #1](https://sqlite.org/wasm/doc/trunk/api-oo1.md).
+
+## Resources
+
+- 📖 [SQLite WASM Documentation](https://sqlite.org/wasm)
+- 🔧 [Worker1 API Reference](https://sqlite.org/wasm/doc/trunk/api-worker1.md)
+- 🛠️ [Object Oriented API #1](https://sqlite.org/wasm/doc/trunk/api-oo1.md)
+- 📦 [Package on NPM](https://www.npmjs.com/package/@sqliteai/sqlite-wasm)
 
 ## License
 
-Apache 2.0.
+**Apache 2.0**
 
 ## Acknowledgements
 
-This project is based on [SQLite Wasm](https://sqlite.org/wasm), which it
-conveniently wraps as an ES Module and publishes to npm as
-[`@sqliteai/sqlite-wasm`](https://www.npmjs.com/package/@sqliteai/sqlite-wasm).
+This project is based on [SQLite WASM](https://sqlite.org/wasm), which is conveniently wrapped as an ES Module and published to npm as [`@sqliteai/sqlite-wasm`](https://www.npmjs.com/package/@sqliteai/sqlite-wasm).
