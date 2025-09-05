@@ -46,7 +46,7 @@
     "check-types": "tsc",
     "clean": "cd .. && git clean -fdX",
     "build": "npm run clean && cd .. && ./build.sh",
-    "start": "npx http-server --coop",
+    "start": "npx http-server --coop -p 3571",
     "test": "npm run start & HTTP_SERVER_PID=$! && sleep 3 && node test/test.cjs && kill $HTTP_SERVER_PID",
     "fix": "npx prettier . --write",
     "bundle": "npm run build && npm i && npm run fix && npm run publint && npm run check-types && npm run test",
