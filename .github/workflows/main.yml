@@ -4,6 +4,9 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+
 jobs:
   btr:
     runs-on: ubuntu-22.04
