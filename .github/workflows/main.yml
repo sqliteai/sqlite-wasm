@@ -23,10 +23,11 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: update npm # https://docs.npmjs.com/trusted-publishers
+        run: npm install -g npm@latest
+
       - name: setup playwright for tests
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
       - name: build, test and release sqlite-wasm
         run: cd sqlite-wasm && npm run deploy
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
