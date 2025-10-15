@@ -50,7 +50,7 @@
     "test": "npm run start & HTTP_SERVER_PID=$! && sleep 3 && node test/test.cjs && kill $HTTP_SERVER_PID",
     "fix": "npx prettier . --write",
     "bundle": "npm run build && npm i && npm run fix && npm run publint && npm run check-types && npm run test",
-    "deploy": "npm run bundle && npm publish --access public --provenance"
+    "deploy": "npm run bundle && npm publish --tag latest --access public --provenance"
   },
   "repository": {
     "type": "git",
