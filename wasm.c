@@ -29,6 +29,7 @@
 #include "modules/sqlite-vector/src/distance-neon.c"
 #include "modules/sqlite-vector/src/distance-cpu.c"
 #include "modules/sqlite-vector/src/distance-avx2.c"
+#include "modules/sqlite-vector/src/distance-avx512.c"
 
 // MARK: - WASM -
 
