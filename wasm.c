@@ -35,6 +35,8 @@
 
 // MARK: - WASM -
 
+#define AUTH_HEADER_MAXSIZE 4096
+
 char *substr(const char *start, const char *end) {
     size_t len = end - start;
     char *out = (char *)malloc(len + 1);
@@ -81,7 +83,7 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
     }
 
     // Authorization
-    char auth_header[256];
+    char auth_header[AUTH_HEADER_MAXSIZE];
     if (authentication) {
         snprintf(auth_header, sizeof(auth_header), "Bearer %s", authentication);
         headers[h++] = "Authorization";
@@ -162,7 +164,7 @@ bool network_send_buffer(network_data *data, const char *endpoint, const char *a
     int h = 0;
     headers[h++] = "Accept";
     headers[h++] = "text/plain";
-    char auth_header[256];
+    char auth_header[AUTH_HEADER_MAXSIZE];
     if (authentication) {
         snprintf(auth_header, sizeof(auth_header), "Bearer %s", authentication);
         headers[h++] = "Authorization";
