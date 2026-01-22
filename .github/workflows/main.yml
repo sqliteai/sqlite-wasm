@@ -3,6 +3,28 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      sqlite_branch:
+        description: "Optional branch to use for modules/sqlite"
+        required: false
+        default: ""
+      emsdk_branch:
+        description: "Optional branch to use for modules/emsdk"
+        required: false
+        default: ""
+      sqlite_wasm_branch:
+        description: "Optional branch to use for modules/sqlite-wasm"
+        required: false
+        default: ""
+      sqlite_sync_branch:
+        description: "Optional branch to use for modules/sqlite-sync"
+        required: false
+        default: ""
+      sqlite_vector_branch:
+        description: "Optional branch to use for modules/sqlite-vector"
+        required: false
+        default: ""
 
 permissions:
   id-token: write
@@ -29,5 +51,54 @@ jobs:
       - name: setup playwright for tests
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
+      - name: override submodule branches for manual runs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          SQLITE_BRANCH: ${{ inputs.sqlite_branch }}
+          EMSDK_BRANCH: ${{ inputs.emsdk_branch }}
+          SQLITE_WASM_BRANCH: ${{ inputs.sqlite_wasm_branch }}
+          SQLITE_SYNC_BRANCH: ${{ inputs.sqlite_sync_branch }}
+          SQLITE_VECTOR_BRANCH: ${{ inputs.sqlite_vector_branch }}
+        run: |
+          set -euo pipefail
+          checkout_branch() {
+            local path="$1"
+            local branch="$2"
+            if [ -n "$branch" ]; then
+              git -C "$path" fetch --depth 1 origin "$branch"
+              git -C "$path" checkout --detach FETCH_HEAD
+            fi
+          }
+          checkout_branch modules/sqlite "$SQLITE_BRANCH"
+          checkout_branch modules/emsdk "$EMSDK_BRANCH"
+          checkout_branch modules/sqlite-wasm "$SQLITE_WASM_BRANCH"
+          checkout_branch modules/sqlite-sync "$SQLITE_SYNC_BRANCH"
+          checkout_branch modules/sqlite-vector "$SQLITE_VECTOR_BRANCH"
+
+      - name: build sqlite-wasm (manual runs)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: cd sqlite-wasm && npm run build
+
       - name: build, test and release sqlite-wasm
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: cd sqlite-wasm && npm run deploy
+
+      - name: resolve build artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: dist_artifact
+        run: |
+          set -euo pipefail
+          zip_path=$(ls modules/sqlite/ext/wasm/sqlite-wasm-*.zip | head -n 1)
+          if [ -z "$zip_path" ]; then
+            echo "No dist zip found under modules/sqlite/ext/wasm."
+            exit 1
+          fi
+          echo "path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$zip_path" .zip)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4.6.2
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        with:
+          name: ${{ steps.dist_artifact.outputs.name }}
+          path: ${{ steps.dist_artifact.outputs.path }}
+          if-no-files-found: error
