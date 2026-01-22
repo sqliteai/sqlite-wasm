@@ -72,7 +72,7 @@ jobs:
           checkout_branch modules/sqlite-vector "$SQLITE_VECTOR_BRANCH"
 
       - name: build sqlite-wasm
-        run: cd sqlite-wasm && npm run build && npm run pack
+        run: cd sqlite-wasm && npm run build && npm pack
 
       - name: resolve build artifact
         id: dist_artifact
