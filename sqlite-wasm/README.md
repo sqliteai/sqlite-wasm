@@ -1,11 +1,11 @@
 # SQLite WASM
 
-SQLite WASM conveniently wrapped as an ES Module. It includes the [sqlite-sync](https://github.com/sqliteai/sqlite-sync) and [sqlite-vector](https://github.com/sqliteai/sqlite-vector) extensions that are automatically loaded at runtime. TypeScript types are from the [official sqlite-wasm repository](https://github.com/sqlite/sqlite-wasm).
+SQLite WASM conveniently wrapped as an ES Module. It includes the [sqlite-sync](https://github.com/sqliteai/sqlite-sync), [sqlite-vector](https://github.com/sqliteai/sqlite-vector), and [sqlite-memory](https://github.com/sqliteai/sqlite-memory) extensions that are automatically loaded at runtime. TypeScript types are from the [official sqlite-wasm repository](https://github.com/sqlite/sqlite-wasm).
 
 ## Features
 
 - 🚀 SQLite WASM wrapped as an ES Module
-- 🔄 Includes sqlite-sync and sqlite-vector extensions
+- 🔄 Includes sqlite-sync, sqlite-vector, and sqlite-memory extensions
 - 📝 Full TypeScript support
 - 💾 OPFS (Origin Private File System) support for persistent storage
 - ⚡ Worker thread support for better performance
