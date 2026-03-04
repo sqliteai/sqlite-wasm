@@ -22,7 +22,9 @@ makefile='modules/sqlite/ext/wasm/GNUmakefile'
 for line in \
     "emcc.jsflags += -sFETCH" \
     "emcc.cflags += -I../../../sqlite-vector/libs" \
-    "cflags.common += -I../../../sqlite-vector/libs"
+    "cflags.common += -I../../../sqlite-vector/libs" \
+    "emcc.cflags += -I../../../sqlite-memory/src" \
+    "cflags.common += -I../../../sqlite-memory/src"
 do
     grep -F "$line" "$makefile" >/dev/null 2>&1 || echo "$line" >> "$makefile"
 done
@@ -42,4 +44,4 @@ cp modules/sqlite-wasm/tsconfig.json sqlite-wasm/.
 PKG=sqlite-wasm/package.json
 TMP=sqlite-wasm/package.tmp.json
 
-jq --arg version "$(cat modules/sqlite/VERSION)-sync.$(cd modules/sqlite-sync && make version)-vector.$(cd modules/sqlite-vector && make version)" '.version = $version' "$PKG" > "$TMP" && mv "$TMP" "$PKG"
+jq --arg version "$(cat modules/sqlite/VERSION)-sync.$(cd modules/sqlite-sync && make version)-vector.$(cd modules/sqlite-vector && make version)-memory.$(cd modules/sqlite-memory && make version)" '.version = $version' "$PKG" > "$TMP" && mv "$TMP" "$PKG"

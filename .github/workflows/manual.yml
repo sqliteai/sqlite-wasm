@@ -22,6 +22,10 @@ on:
         description: "Optional branch to use for modules/sqlite-vector"
         required: false
         default: ""
+      sqlite_memory_branch:
+        description: "Optional branch to use for modules/sqlite-memory"
+        required: false
+        default: ""
 
 permissions:
   id-token: write
@@ -55,6 +59,7 @@ jobs:
           SQLITE_WASM_BRANCH: ${{ inputs.sqlite_wasm_branch }}
           SQLITE_SYNC_BRANCH: ${{ inputs.sqlite_sync_branch }}
           SQLITE_VECTOR_BRANCH: ${{ inputs.sqlite_vector_branch }}
+          SQLITE_MEMORY_BRANCH: ${{ inputs.sqlite_memory_branch }}
         run: |
           set -euo pipefail
           checkout_branch() {
@@ -70,6 +75,7 @@ jobs:
           checkout_branch modules/sqlite-wasm "$SQLITE_WASM_BRANCH"
           checkout_branch modules/sqlite-sync "$SQLITE_SYNC_BRANCH"
           checkout_branch modules/sqlite-vector "$SQLITE_VECTOR_BRANCH"
+          checkout_branch modules/sqlite-memory "$SQLITE_MEMORY_BRANCH"
 
       - name: build sqlite-wasm
         run: cd sqlite-wasm && npm run build && npm pack

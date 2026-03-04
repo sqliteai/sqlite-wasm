@@ -35,6 +35,13 @@
           testString += `-vector.${version}`;
         },
       });
+      db.exec({
+        sql: 'select memory_version();',
+        rowMode: 'array',
+        callback: function (version) {
+          testString += `-memory.${version}`;
+        },
+      });
       log(testString);
     } finally {
       db.close();
