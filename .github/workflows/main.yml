@@ -31,3 +31,8 @@ jobs:
 
       - name: build, test and release sqlite-wasm
         run: cd sqlite-wasm && npm run deploy
+
+      - name: e2e sqlite-memory
+        env:
+          APIKEY: ${{ secrets.APIKEY }}
+        run: cd sqlite-wasm && node test/e2e.cjs

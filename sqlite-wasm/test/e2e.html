@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-us">
+  <body>
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const apikey = params.get('apikey') || '';
+
+        const logHtml = function (cssClass, ...args) {
+          const ln = document.createElement('div');
+          if (cssClass) ln.classList.add(cssClass);
+          ln.append(document.createTextNode(args.join(' ')));
+          document.body.append(ln);
+        };
+        const w = new Worker(
+          'e2e.js?sqlite3.dir=../sqlite-wasm/jswasm&apikey=' +
+            encodeURIComponent(apikey),
+        );
+        w.onmessage = function ({ data }) {
+          switch (data.type) {
+            case 'log':
+              logHtml(data.payload.cssClass, ...data.payload.args);
+              break;
+            default:
+              logHtml('error', 'Unhandled message:', data.type);
+          }
+        };
+      })();
+    </script>
+  </body>
+</html>
