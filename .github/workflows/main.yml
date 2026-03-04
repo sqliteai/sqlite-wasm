@@ -29,10 +29,19 @@ jobs:
       - name: setup playwright for tests
         run: npx playwright install --with-deps && npx playwright install msedge && npx playwright install chrome
 
-      - name: build, test and release sqlite-wasm
-        run: cd sqlite-wasm && npm run deploy
+      - name: build sqlite-wasm
+        run: cd sqlite-wasm && npm run build && npm i
+
+      - name: validate sqlite-wasm
+        run: cd sqlite-wasm && npm run fix && npm run publint && npm run check-types
+
+      - name: test sqlite-wasm
+        run: cd sqlite-wasm && npm run test
 
       - name: e2e sqlite-memory
         env:
           APIKEY: ${{ secrets.APIKEY }}
         run: cd sqlite-wasm && node test/e2e.cjs
+
+      - name: publish sqlite-wasm
+        run: cd sqlite-wasm && npm publish --tag latest --access public --provenance

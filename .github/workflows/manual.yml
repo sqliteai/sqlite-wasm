@@ -78,12 +78,18 @@ jobs:
           checkout_branch modules/sqlite-memory "$SQLITE_MEMORY_BRANCH"
 
       - name: build sqlite-wasm
-        run: cd sqlite-wasm && npm run build && npm i && npm pack
+        run: cd sqlite-wasm && npm run build && npm i
+
+      - name: test sqlite-wasm
+        run: cd sqlite-wasm && npm run test
 
       - name: e2e sqlite-memory
         env:
           APIKEY: ${{ secrets.APIKEY }}
         run: cd sqlite-wasm && node test/e2e.cjs
+
+      - name: pack sqlite-wasm
+        run: cd sqlite-wasm && npm pack
 
       - name: resolve build artifact
         id: dist_artifact
