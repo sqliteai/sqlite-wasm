@@ -1,6 +1,6 @@
 {
   "name": "@sqliteai/sqlite-wasm",
-  "version": "3.50.4-sync.0.8.68-vector.0.9.93-memory.0.8.0",
+  "version": "3.50.4-sync.0.8.68-vector.0.9.93-memory.0.8.1",
   "description": "SQLite Wasm compiled with automatically initialized sqlite-sync, sqlite-vector, and sqlite-memory extensions. Conveniently packaged as an ES Module for effortless integration.",
   "keywords": [
     "sqlite",
