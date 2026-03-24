@@ -14,14 +14,19 @@
 
 // sqlite-sync extension
 #define CLOUDSYNC_OMIT_CURL
-#include "modules/sqlite-sync/src/network_private.h"
+#include "modules/sqlite-sync/src/network/network_private.h"
 #include "modules/sqlite-sync/src/utils.c"
-#include "modules/sqlite-sync/src/network.c"
+#include "modules/sqlite-sync/src/network/network.c"
 #include "modules/sqlite-sync/src/dbutils.c"
 #include "modules/sqlite-sync/src/cloudsync.c"
-#include "modules/sqlite-sync/src/vtab.c"
 #include "modules/sqlite-sync/src/pk.c"
 #include "modules/sqlite-sync/src/lz4.c"
+#include "modules/sqlite-sync/modules/fractional-indexing/fractional_indexing.c"
+#include "modules/sqlite-sync/src/block.c"
+#include "modules/sqlite-sync/src/sqlite/cloudsync_changes_sqlite.c"
+#include "modules/sqlite-sync/src/sqlite/cloudsync_sqlite.c"
+#include "modules/sqlite-sync/src/sqlite/database_sqlite.c"
+#include "modules/sqlite-sync/src/sqlite/sql_sqlite.c"
 
 // sqlite-vector extension
 #include "modules/sqlite-vector/src/sqlite-vector.c"

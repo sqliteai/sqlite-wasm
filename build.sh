@@ -24,7 +24,9 @@ for line in \
     "emcc.cflags += -I../../../sqlite-vector/libs" \
     "cflags.common += -I../../../sqlite-vector/libs" \
     "emcc.cflags += -I../../../sqlite-memory/src" \
-    "cflags.common += -I../../../sqlite-memory/src"
+    "cflags.common += -I../../../sqlite-memory/src" \
+    "emcc.cflags += -I../../../sqlite-sync/modules/fractional-indexing" \
+    "cflags.common += -I../../../sqlite-sync/modules/fractional-indexing"
 do
     grep -F "$line" "$makefile" >/dev/null 2>&1 || echo "$line" >> "$makefile"
 done
