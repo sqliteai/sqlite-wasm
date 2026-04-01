@@ -1,6 +1,6 @@
 {
   "name": "@sqliteai/sqlite-wasm",
-  "version": "3.50.4-sync.1.0.5-vector.0.9.94",
+  "version": "3.50.4-sync.1.0.5-vector.0.9.94-memory.0.8.2",
   "description": "SQLite Wasm compiled with automatically initialized sqlite-sync, sqlite-vector, and sqlite-memory extensions. Conveniently packaged as an ES Module for effortless integration.",
   "keywords": [
     "sqlite",
@@ -65,7 +65,7 @@
   },
   "homepage": "https://github.com/sqliteai/sqlite-wasm#readme",
   "devDependencies": {
-    "http-server": "github:vapier/http-server",
+    "http-server": "^14.1.1",
     "playwright": "*",
     "prettier": "^3.5.3",
     "prettier-plugin-jsdoc": "^1.3.2",
