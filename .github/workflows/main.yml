@@ -1,8 +1,6 @@
 name: build, test and release sqlite-wasm
 on:
   push:
-    branches:
-      - main
 
 permissions:
   id-token: write
@@ -44,4 +42,5 @@ jobs:
         run: cd sqlite-wasm && node test/e2e.cjs
 
       - name: publish sqlite-wasm
+        if: github.ref == 'refs/heads/main'
         run: cd sqlite-wasm && npm publish --tag latest --access public --provenance
