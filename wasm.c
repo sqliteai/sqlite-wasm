@@ -240,6 +240,7 @@ bool network_send_buffer(network_data *data, const char *endpoint, const char *a
 
 struct dbmem_remote_engine_t {
     dbmem_context       *context;
+    char                *api_key;
     char                *provider;
     char                *model;
     char                *data;          size_t data_capacity, data_size;
@@ -410,7 +411,19 @@ dbmem_remote_engine_t *dbmem_remote_engine_init (void *ctx, const char *provider
         return NULL;
     }
 
+    char *_api_key = dbmem_strdup(api_key);
+    if (!_api_key) {
+        snprintf(err_msg, DBMEM_ERRBUF_SIZE, "Unable to duplicate API key (insufficient memory)");
+        dbmem_remote_engine_free(engine);
+        dbmem_free(request);
+        dbmem_free(data);
+        dbmem_free(_provider);
+        dbmem_free(_model);
+        return NULL;
+    }
+
     engine->context = (dbmem_context *)ctx;
+    engine->api_key = _api_key;
     engine->provider = _provider;
     engine->model = _model;
     engine->data = data;
@@ -455,9 +468,8 @@ int dbmem_remote_compute_embedding (dbmem_remote_engine_t *engine, const char *t
     }
 
     // perform HTTP request via emscripten fetch
-    const char *api_key = dbmem_context_apikey(engine->context);
     char auth_header[512];
-    snprintf(auth_header, sizeof(auth_header), "Bearer %s", api_key);
+    snprintf(auth_header, sizeof(auth_header), "Bearer %s", engine->api_key);
 
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
@@ -627,8 +639,27 @@ int dbmem_remote_compute_embedding (dbmem_remote_engine_t *engine, const char *t
     return 0;
 }
 
+int dbmem_remote_engine_set_apikey (dbmem_remote_engine_t *engine, const char *api_key, char err_msg[DBMEM_ERRBUF_SIZE]) {
+    if (!engine || !api_key) {
+        if (err_msg) snprintf(err_msg, DBMEM_ERRBUF_SIZE, "Invalid remote engine or API key");
+        return SQLITE_MISUSE;
+    }
+
+    char *copy = dbmem_strdup(api_key);
+    if (!copy) {
+        if (err_msg) snprintf(err_msg, DBMEM_ERRBUF_SIZE, "Unable to duplicate API key (insufficient memory)");
+        return SQLITE_NOMEM;
+    }
+
+    if (engine->api_key) dbmem_free(engine->api_key);
+    engine->api_key = copy;
+
+    return SQLITE_OK;
+}
+
 void dbmem_remote_engine_free (dbmem_remote_engine_t *engine) {
     if (!engine) return;
+    if (engine->api_key) dbmem_free(engine->api_key);
     if (engine->provider) dbmem_free(engine->provider);
     if (engine->model) dbmem_free(engine->model);
     if (engine->data) dbmem_free(engine->data);
