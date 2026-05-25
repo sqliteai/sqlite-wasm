@@ -182,7 +182,7 @@
         'SELECT hash FROM dbmem_content WHERE context IS NULL LIMIT 1;',
       );
       const before = execScalar('SELECT COUNT(*) FROM dbmem_content;');
-      execScalar(`SELECT memory_delete(${hash});`);
+      execScalar(`SELECT memory_delete('${hash}');`);
       const after = execScalar('SELECT COUNT(*) FROM dbmem_content;');
       if (after !== before - 1)
         throw new Error(`expected ${before - 1}, got ${after}`);
