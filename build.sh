@@ -1,5 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
 CPUS=1
-if [ "$OS" = "Windows_NT" ]; then
+if [ "${OS:-}" = "Windows_NT" ]; then
     CPUS=$(powershell -Command "[Environment]::ProcessorCount")
 else
     if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "darwin" ]; then
@@ -7,7 +10,7 @@ else
         brew install wabt
     else
         CPUS=$(nproc)
-        sudo apt update && sudo apt install wabt
+        sudo apt update && sudo apt install -y wabt
     fi
 fi
 
@@ -36,6 +39,12 @@ unzip modules/sqlite/ext/wasm/sqlite-wasm-*.zip -d tmp
 mkdir -p sqlite-wasm/sqlite-wasm/jswasm
 mv tmp/sqlite-wasm-*/jswasm sqlite-wasm/sqlite-wasm/.
 rm -rf tmp
+
+if [ ! -f sqlite-wasm/sqlite-wasm/jswasm/sqlite3.wasm ]; then
+    echo "Missing sqlite-wasm/sqlite-wasm/jswasm/sqlite3.wasm after build"
+    find sqlite-wasm/sqlite-wasm -maxdepth 4 -type f | sort
+    exit 1
+fi
 
 cp modules/sqlite-wasm/.prettierrc sqlite-wasm/.
 cp modules/sqlite-wasm/index.d.ts sqlite-wasm/.

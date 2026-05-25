@@ -59,7 +59,7 @@ char *substr(const char *start, const char *end) {
     return out;
 }
 
-NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint, const char *authentication, bool zero_terminated, bool is_post_request, char *json_payload, const char *custom_header) {
+NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint, const char *authentication, bool zero_terminated, bool is_post_request, char *json_payload, const char **extra_headers, int nextra_headers) {
     char *buffer = NULL;
     size_t blen = 0;
 
@@ -75,23 +75,52 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_REPLACE;
 
     // Prepare header array (alternating key, value, NULL-terminated)
-    const char *headers[11];
-    int h = 0;
+    int max_header_pairs = nextra_headers + 4;
+    const char **headers = (const char **)calloc((size_t)(max_header_pairs * 2 + 1), sizeof(char *));
+    char **header_keys = (char **)calloc((size_t)(nextra_headers > 0 ? nextra_headers : 1), sizeof(char *));
+    if (!headers || !header_keys) {
+        free(headers);
+        free(header_keys);
+        return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, NULL, 0, NULL, NULL};
+    }
 
-    // Custom header (must be "Key: Value", split at ':')
-    char *custom_key = NULL;
-    if (custom_header) {
-        const char *colon = strchr(custom_header, ':');
+    int h = 0;
+    int allocated_keys = 0;
+
+    // Extra headers arrive as "Key: Value"; Emscripten fetch expects key/value pairs.
+    for (int i = 0; i < nextra_headers; i++) {
+        const char *header = extra_headers ? extra_headers[i] : NULL;
+        if (!header) continue;
+
+        const char *colon = strchr(header, ':');
         if (colon) {
-            size_t klen = colon - custom_header;
-            custom_key = (char *)malloc(klen + 1);
-            strncpy(custom_key, custom_header, klen);
-            custom_key[klen] = 0;
-            const char *custom_val = colon + 1;
-            while (*custom_val == ' ') custom_val++;
-            headers[h++] = custom_key;
-            headers[h++] = custom_val;
+            size_t klen = (size_t)(colon - header);
+            char *key = (char *)malloc(klen + 1);
+            if (!key) {
+                for (int j = 0; j < allocated_keys; j++) free(header_keys[j]);
+                free(header_keys);
+                free(headers);
+                return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, NULL, 0, NULL, NULL};
+            }
+            memcpy(key, header, klen);
+            key[klen] = 0;
+
+            const char *value = colon + 1;
+            while (*value == ' ') value++;
+
+            header_keys[allocated_keys++] = key;
+            headers[h++] = key;
+            headers[h++] = value;
         }
+    }
+
+    // Organization
+    char org_header[512];
+    char *org_id = network_data_get_orgid(data);
+    if (org_id) {
+        snprintf(org_header, sizeof(org_header), "%s", org_id);
+        headers[h++] = CLOUDSYNC_HEADER_ORG;
+        headers[h++] = org_header;
     }
 
     // Authorization
@@ -157,7 +186,9 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
 
     // cleanup
     emscripten_fetch_close(fetch);
-    if (custom_key) free(custom_key);
+    for (int i = 0; i < allocated_keys; i++) free(header_keys[i]);
+    free(header_keys);
+    free(headers);
 
     return result;
 }
@@ -281,6 +312,55 @@ static int set_json_error_message (dbmem_remote_engine_t *engine) {
     }
     dbmem_context_set_error(engine->context, errmsg);
     return -1;
+}
+
+static int dbmem_json_skip_token (const jsmntok_t *tokens, int index) {
+    int next = index + 1;
+
+    if (tokens[index].type == JSMN_ARRAY) {
+        for (int i = 0; i < tokens[index].size; i++) {
+            next = dbmem_json_skip_token(tokens, next);
+        }
+        return next;
+    }
+
+    if (tokens[index].type == JSMN_OBJECT) {
+        for (int i = 0; i < tokens[index].size; i++) {
+            next += 1; // skip key token
+            next = dbmem_json_skip_token(tokens, next);
+        }
+        return next;
+    }
+
+    return next;
+}
+
+static bool dbmem_json_token_equals (const char *json, const jsmntok_t *token, const char *text) {
+    size_t len = strlen(text);
+    size_t token_len = (size_t)(token->end - token->start);
+    return token_len == len && memcmp(json + token->start, text, len) == 0;
+}
+
+static int dbmem_json_object_find (const char *json, const jsmntok_t *tokens, int object_index, const char *key) {
+    if (object_index < 0 || tokens[object_index].type != JSMN_OBJECT) return -1;
+
+    int index = object_index + 1;
+    for (int i = 0; i < tokens[object_index].size; i++) {
+        int key_index = index;
+        int value_index = key_index + 1;
+
+        if (tokens[key_index].type != JSMN_STRING) return -1;
+        if (dbmem_json_token_equals(json, &tokens[key_index], key)) return value_index;
+
+        index = dbmem_json_skip_token(tokens, value_index);
+    }
+
+    return -1;
+}
+
+static bool dbmem_json_parse_bool (const char *json, const jsmntok_t *token) {
+    size_t len = (size_t)(token->end - token->start);
+    return token->type == JSMN_PRIMITIVE && len == 4 && memcmp(json + token->start, "true", 4) == 0;
 }
 
 dbmem_remote_engine_t *dbmem_remote_engine_init (void *ctx, const char *provider, const char *model, char err_msg[DBMEM_ERRBUF_SIZE]) {
@@ -460,24 +540,61 @@ int dbmem_remote_compute_embedding (dbmem_remote_engine_t *engine, const char *t
     jsmntok_t *tokens = engine->tokens;
 
     // extract fields
-    int n_embd = 0, prompt_tokens = 0, estimated_prompt_tokens = 0;
-    int emb_start = -1, emb_count = 0;
+    int n_embd = 0;
+    int request_tokens = 0;
+    bool truncated = false;
+    int emb_start = -1;
+    size_t emb_count = 0;
 
-    for (int i = 0; i < ntokens - 1; i++) {
-        if (tokens[i].type != JSMN_STRING) continue;
-        int klen = tokens[i].end - tokens[i].start;
-        const char *key = engine->data + tokens[i].start;
+    if (tokens[0].type != JSMN_OBJECT) {
+        dbmem_context_set_error(engine->context, "Invalid API response shape");
+        return -1;
+    }
 
-        if (klen == 9 && memcmp(key, "embedding", 9) == 0 && tokens[i + 1].type == JSMN_ARRAY) {
-            emb_count = tokens[i + 1].size;
-            emb_start = i + 2;
-        } else if (klen == 16 && memcmp(key, "output_dimension", 16) == 0) {
-            n_embd = atoi(engine->data + tokens[i + 1].start);
-        } else if (klen == 13 && memcmp(key, "prompt_tokens", 13) == 0 && tokens[i + 1].type == JSMN_PRIMITIVE) {
-            prompt_tokens = atoi(engine->data + tokens[i + 1].start);
-        } else if (klen == 23 && memcmp(key, "estimated_prompt_tokens", 23) == 0) {
-            estimated_prompt_tokens = atoi(engine->data + tokens[i + 1].start);
+    int output_dimension_index = dbmem_json_object_find(engine->data, tokens, 0, "output_dimension");
+    if (output_dimension_index >= 0 && tokens[output_dimension_index].type == JSMN_PRIMITIVE) {
+        n_embd = atoi(engine->data + tokens[output_dimension_index].start);
+    }
+
+    int data_index = dbmem_json_object_find(engine->data, tokens, 0, "data");
+    if (data_index < 0 || tokens[data_index].type != JSMN_ARRAY || tokens[data_index].size <= 0) {
+        dbmem_context_set_error(engine->context, "Missing embedding data in API response");
+        return -1;
+    }
+
+    int item_index = data_index + 1;
+    if (tokens[item_index].type != JSMN_OBJECT) {
+        dbmem_context_set_error(engine->context, "Invalid embedding item in API response");
+        return -1;
+    }
+
+    int embedding_index = dbmem_json_object_find(engine->data, tokens, item_index, "embedding");
+    if (embedding_index < 0 || tokens[embedding_index].type != JSMN_ARRAY) {
+        dbmem_context_set_error(engine->context, "Missing embedding data in API response");
+        return -1;
+    }
+    if (tokens[embedding_index].size <= 0) {
+        dbmem_context_set_error(engine->context, "Invalid embedding array size in API response");
+        return -1;
+    }
+    emb_count = (size_t)tokens[embedding_index].size;
+    emb_start = embedding_index + 1;
+
+    int truncated_index = dbmem_json_object_find(engine->data, tokens, item_index, "truncated");
+    if (truncated_index >= 0) {
+        truncated = dbmem_json_parse_bool(engine->data, &tokens[truncated_index]);
+    }
+
+    int usage_index = dbmem_json_object_find(engine->data, tokens, 0, "usage");
+    if (usage_index >= 0 && tokens[usage_index].type == JSMN_OBJECT) {
+        int request_tokens_index = dbmem_json_object_find(engine->data, tokens, usage_index, "request_tokens");
+        if (request_tokens_index >= 0 && tokens[request_tokens_index].type == JSMN_PRIMITIVE) {
+            request_tokens = atoi(engine->data + tokens[request_tokens_index].start);
         }
+    }
+
+    if (n_embd == 0 && emb_count > 0) {
+        n_embd = (int)emb_count;
     }
 
     if (emb_start < 0 || emb_count == 0 || n_embd == 0) {
@@ -495,16 +612,16 @@ int dbmem_remote_compute_embedding (dbmem_remote_engine_t *engine, const char *t
         engine->embedding_capacity = emb_count;
     }
 
-    for (int i = 0; i < emb_count; i++) {
+    for (size_t i = 0; i < emb_count; i++) {
         engine->embedding[i] = strtof(engine->data + tokens[emb_start + i].start, NULL);
     }
 
     result->n_embd = n_embd;
-    result->n_tokens = prompt_tokens;
-    result->n_tokens_truncated = (estimated_prompt_tokens > prompt_tokens) ? estimated_prompt_tokens - prompt_tokens : 0;
+    result->n_tokens = request_tokens;
+    result->truncated = truncated;
     result->embedding = engine->embedding;
 
-    engine->total_tokens_processed += prompt_tokens;
+    engine->total_tokens_processed += result->n_tokens;
     engine->total_embeddings_generated++;
 
     return 0;
