@@ -766,9 +766,22 @@ void dbmem_remote_engine_free (dbmem_remote_engine_t *engine) {
 
 // MARK: -
 
+static void sqliteai_wasm_version(sqlite3_context *context, int argc, sqlite3_value **argv) {
+    (void)argc;
+    (void)argv;
+    sqlite3_result_text(context, SQLITEAI_WASM_WRAPPER_VERSION, -1, SQLITE_STATIC);
+}
+
+static int sqlite3_wasm_wrapper_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
+    (void)pzErrMsg;
+    (void)pApi;
+    return sqlite3_create_function(db, "wasm_version", 0, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sqliteai_wasm_version, NULL, NULL);
+}
+
 int sqlite3_wasm_extra_init(const char *z) {
     fprintf(stderr, "%s: %s()\n", __FILE__, __func__);
     int rc = SQLITE_OK;
+    rc = sqlite3_auto_extension((void *) sqlite3_wasm_wrapper_init);
     rc = sqlite3_auto_extension((void *) sqlite3_cloudsync_init);
     rc = sqlite3_auto_extension((void *) sqlite3_vector_init);
     rc = sqlite3_auto_extension((void *) sqlite3_memory_init);

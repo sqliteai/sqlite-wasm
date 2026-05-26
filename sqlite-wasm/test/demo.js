@@ -22,6 +22,13 @@
         },
       });
       db.exec({
+        sql: 'select wasm_version();',
+        rowMode: 'array',
+        callback: function (version) {
+          testString += `-wasm.${version}`;
+        },
+      });
+      db.exec({
         sql: 'select cloudsync_version();',
         rowMode: 'array',
         callback: function (version) {
