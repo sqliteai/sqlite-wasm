@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <emscripten/fetch.h>
 #include <emscripten/emscripten.h>
 #include "sqlite3.h"
@@ -59,9 +61,71 @@ char *substr(const char *start, const char *end) {
     return out;
 }
 
+static bool wasm_header_name_equals(const char *start, const char *end, const char *name) {
+    size_t name_len = strlen(name);
+    if ((size_t)(end - start) != name_len) return false;
+
+    for (size_t i = 0; i < name_len; i++) {
+        if (tolower((unsigned char)start[i]) != tolower((unsigned char)name[i])) return false;
+    }
+
+    return true;
+}
+
+static char *wasm_response_header_dup(emscripten_fetch_t *fetch, const char *name) {
+    if (!fetch || !name) return NULL;
+
+    size_t headers_len = emscripten_fetch_get_response_headers_length(fetch);
+    if (headers_len == 0) return NULL;
+
+    char *headers = (char *)malloc(headers_len + 1);
+    if (!headers) return NULL;
+
+    if (emscripten_fetch_get_response_headers(fetch, headers, headers_len + 1) == 0) {
+        free(headers);
+        return NULL;
+    }
+
+    char *value = NULL;
+    const char *line = headers;
+    while (*line) {
+        const char *line_end = strchr(line, '\n');
+        if (!line_end) line_end = line + strlen(line);
+
+        const char *colon = memchr(line, ':', (size_t)(line_end - line));
+        if (colon && wasm_header_name_equals(line, colon, name)) {
+            const char *value_start = colon + 1;
+            const char *value_end = line_end;
+
+            while (value_start < value_end && (*value_start == ' ' || *value_start == '\t')) value_start++;
+            while (value_end > value_start && (value_end[-1] == '\r' || value_end[-1] == '\n' || value_end[-1] == ' ' || value_end[-1] == '\t')) value_end--;
+
+            size_t value_len = (size_t)(value_end - value_start);
+            value = (char *)malloc(value_len + 1);
+            if (value) {
+                memcpy(value, value_start, value_len);
+                value[value_len] = 0;
+            }
+            break;
+        }
+
+        line = (*line_end == '\n') ? line_end + 1 : line_end;
+    }
+
+    free(headers);
+    return value;
+}
+
+static void wasm_request_headers_free(char **header_keys, int allocated_keys, const char **headers) {
+    for (int i = 0; i < allocated_keys; i++) free(header_keys[i]);
+    free(header_keys);
+    free(headers);
+}
+
 NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint, const char *authentication, bool zero_terminated, bool is_post_request, char *json_payload, const char **extra_headers, int nextra_headers) {
     char *buffer = NULL;
     size_t blen = 0;
+    bool using_ticket = network_data_should_use_ticket(data, endpoint, authentication);
 
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
@@ -75,7 +139,7 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_REPLACE;
 
     // Prepare header array (alternating key, value, NULL-terminated)
-    int max_header_pairs = nextra_headers + 4;
+    int max_header_pairs = nextra_headers + 5;
     const char **headers = (const char **)calloc((size_t)(max_header_pairs * 2 + 1), sizeof(char *));
     char **header_keys = (char **)calloc((size_t)(nextra_headers > 0 ? nextra_headers : 1), sizeof(char *));
     if (!headers || !header_keys) {
@@ -97,9 +161,7 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
             size_t klen = (size_t)(colon - header);
             char *key = (char *)malloc(klen + 1);
             if (!key) {
-                for (int j = 0; j < allocated_keys; j++) free(header_keys[j]);
-                free(header_keys);
-                free(headers);
+                wasm_request_headers_free(header_keys, allocated_keys, headers);
                 return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, NULL, 0, NULL, NULL};
             }
             memcpy(key, header, klen);
@@ -131,6 +193,15 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
         headers[h++] = auth_header;
     }
 
+    // CloudSync session ticket
+    char ticket_header[AUTH_HEADER_MAXSIZE];
+    if (using_ticket) {
+        char *ticket = network_data_get_ticket(data);
+        snprintf(ticket_header, sizeof(ticket_header), "%s", ticket);
+        headers[h++] = CLOUDSYNC_HEADER_TICKET;
+        headers[h++] = ticket_header;
+    }
+
     // Content-Type for JSON
     if (json_payload) {
         headers[h++] = "Content-Type";
@@ -148,10 +219,25 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
 
     emscripten_fetch_t *fetch = emscripten_fetch(&attr, endpoint); // Blocks here until the operation is complete.
     NETWORK_RESULT result = {0, NULL, 0, NULL, NULL};
+    if (!fetch) {
+        result.code = CLOUDSYNC_NETWORK_ERROR;
+        wasm_request_headers_free(header_keys, allocated_keys, headers);
+        return result;
+    }
 
     if(fetch->readyState == 4){
-        buffer = fetch->data;
-        blen = fetch->totalBytes;
+        buffer = (char *)fetch->data;
+        blen = fetch->numBytes;
+    }
+
+    if (fetch->status < 400) {
+        char *ticket = wasm_response_header_dup(fetch, CLOUDSYNC_HEADER_TICKET);
+        if (ticket && ticket[0]) {
+            char *expires_at = wasm_response_header_dup(fetch, CLOUDSYNC_HEADER_TICKET_EXPIRES_AT);
+            network_data_update_ticket(data, ticket, expires_at);
+            free(expires_at);
+        }
+        free(ticket);
     }
     
     if (fetch->status >= 200 && fetch->status < 300) {
@@ -168,9 +254,9 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
         } else result.code = CLOUDSYNC_NETWORK_OK;
     } else {
         result.code = CLOUDSYNC_NETWORK_ERROR;
-        if (fetch->statusText && fetch->statusText[0]) {
+        if (fetch->statusText[0]) {
             result.buffer = strdup(fetch->statusText);
-            result.blen = sizeof(fetch->statusText);
+            result.blen = strlen(fetch->statusText);
             result.xfree = free;
         } else if (blen > 0 && buffer) {
             char *buf = (char*)malloc(blen + 1);
@@ -186,9 +272,7 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
 
     // cleanup
     emscripten_fetch_close(fetch);
-    for (int i = 0; i < allocated_keys; i++) free(header_keys[i]);
-    free(header_keys);
-    free(headers);
+    wasm_request_headers_free(header_keys, allocated_keys, headers);
 
     return result;
 }
@@ -223,6 +307,7 @@ bool network_send_buffer(network_data *data, const char *endpoint, const char *a
     attr.requestDataSize = blob_size;
 
     emscripten_fetch_t *fetch = emscripten_fetch(&attr, endpoint); // Blocks here until the operation is complete.
+    if (!fetch) return false;
     if (fetch->status >= 200 && fetch->status < 300) result = true;
 
     emscripten_fetch_close(fetch);
