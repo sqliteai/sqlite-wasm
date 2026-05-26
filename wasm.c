@@ -50,6 +50,7 @@
 
 // MARK: - WASM -
 
+#define SQLITEAI_WASM_WRAPPER_VERSION "1.0.0"
 #define AUTH_HEADER_MAXSIZE 4096
 
 char *substr(const char *start, const char *end) {

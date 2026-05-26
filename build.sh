@@ -54,5 +54,11 @@ cp modules/sqlite-wasm/tsconfig.json sqlite-wasm/.
 
 PKG=sqlite-wasm/package.json
 TMP=sqlite-wasm/package.tmp.json
+WASM_VERSION="$(sed -n 's/^#define SQLITEAI_WASM_WRAPPER_VERSION[[:space:]]*"\([^"]*\)".*/\1/p' wasm.c)"
 
-jq --arg version "$(cat modules/sqlite/VERSION)-sync.$(cd modules/sqlite-sync && make version)-vector.$(cd modules/sqlite-vector && make version)-memory.$(cd modules/sqlite-memory && make version)" '.version = $version' "$PKG" > "$TMP" && mv "$TMP" "$PKG"
+if ! [[ "$WASM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Missing or invalid SQLITEAI_WASM_WRAPPER_VERSION in wasm.c: $WASM_VERSION"
+    exit 1
+fi
+
+jq --arg version "$(cat modules/sqlite/VERSION)-wasm.$WASM_VERSION-sync.$(cd modules/sqlite-sync && make version)-vector.$(cd modules/sqlite-vector && make version)-memory.$(cd modules/sqlite-memory && make version)" '.version = $version' "$PKG" > "$TMP" && mv "$TMP" "$PKG"
