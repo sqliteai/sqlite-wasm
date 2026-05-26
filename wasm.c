@@ -779,7 +779,6 @@ static int sqlite3_wasm_wrapper_init(sqlite3 *db, char **pzErrMsg, const sqlite3
 }
 
 int sqlite3_wasm_extra_init(const char *z) {
-    fprintf(stderr, "%s: %s()\n", __FILE__, __func__);
     int rc = SQLITE_OK;
     rc = sqlite3_auto_extension((void *) sqlite3_wasm_wrapper_init);
     rc = sqlite3_auto_extension((void *) sqlite3_cloudsync_init);
