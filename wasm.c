@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include <emscripten/fetch.h>
@@ -194,12 +195,14 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
     }
 
     // CloudSync session ticket
-    char ticket_header[AUTH_HEADER_MAXSIZE];
+    char ticket_header[CLOUDSYNC_SESSION_TOKEN_MAXSIZE];
     if (using_ticket) {
         char *ticket = network_data_get_ticket(data);
-        snprintf(ticket_header, sizeof(ticket_header), "%s", ticket);
-        headers[h++] = CLOUDSYNC_HEADER_TICKET;
-        headers[h++] = ticket_header;
+        if (strlen(ticket) < sizeof(ticket_header)) {
+            snprintf(ticket_header, sizeof(ticket_header), "%s", ticket);
+            headers[h++] = CLOUDSYNC_HEADER_TICKET;
+            headers[h++] = ticket_header;
+        }
     }
 
     // Content-Type for JSON
@@ -226,11 +229,17 @@ NETWORK_RESULT network_receive_buffer (network_data *data, const char *endpoint,
     }
 
     if(fetch->readyState == 4){
+        if (fetch->numBytes > SIZE_MAX) {
+            result.code = CLOUDSYNC_NETWORK_ERROR;
+            emscripten_fetch_close(fetch);
+            wasm_request_headers_free(header_keys, allocated_keys, headers);
+            return result;
+        }
         buffer = (char *)fetch->data;
-        blen = fetch->numBytes;
+        blen = (size_t)fetch->numBytes;
     }
 
-    if (fetch->status < 400) {
+    if (fetch->status >= 200 && fetch->status < 400) {
         char *ticket = wasm_response_header_dup(fetch, CLOUDSYNC_HEADER_TICKET);
         if (ticket && ticket[0]) {
             char *expires_at = wasm_response_header_dup(fetch, CLOUDSYNC_HEADER_TICKET_EXPIRES_AT);
