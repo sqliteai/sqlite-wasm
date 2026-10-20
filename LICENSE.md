@@ -1,1 +1,0 @@
-sqlite-wasm/LICENSE.md
